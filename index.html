@@ -4,576 +4,783 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HuggingFace 模型血缘分析平台</title>
+    <title>LLM Genealogy 控制台</title>
     <style>
+        :root {
+            --bg: #07111f;
+            --bg-soft: rgba(8, 18, 33, 0.74);
+            --panel: rgba(12, 24, 42, 0.82);
+            --panel-strong: rgba(18, 34, 58, 0.95);
+            --line: rgba(148, 163, 184, 0.18);
+            --text: #e7eef8;
+            --muted: #8ea0b9;
+            --accent: #4ecdc4;
+            --accent-2: #57a6ff;
+            --danger: #ff7b72;
+            --success: #5ee59b;
+            --warning: #f5bf4f;
+            --shadow: 0 24px 60px rgba(0, 0, 0, 0.28);
+        }
+
         * {
-            margin: 0;
-            padding: 0;
             box-sizing: border-box;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-            background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #312e81 100%);
+            margin: 0;
             min-height: 100vh;
-            color: #e2e8f0;
+            font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+            color: var(--text);
+            background:
+                radial-gradient(circle at top left, rgba(87, 166, 255, 0.18), transparent 35%),
+                radial-gradient(circle at bottom right, rgba(78, 205, 196, 0.16), transparent 28%),
+                linear-gradient(145deg, #030712 0%, #07111f 42%, #0d1c31 100%);
             overflow-x: hidden;
         }
 
-        /* 背景动画 */
-        .bg-animation {
+        body::before {
+            content: "";
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
+            inset: 0;
+            background-image:
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 32px 32px;
+            mask-image: radial-gradient(circle at center, black, transparent 78%);
             pointer-events: none;
-            overflow: hidden;
-            z-index: 0;
         }
 
-        .bg-animation::before {
-            content: '';
-            position: absolute;
-            width: 200%;
-            height: 200%;
-            background:
-                radial-gradient(circle at 20% 80%, rgba(96, 165, 250, 0.15) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(52, 211, 153, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(244, 114, 182, 0.1) 0%, transparent 40%);
-            animation: float 20s ease-in-out infinite;
-        }
-
-        @keyframes float {
-
-            0%,
-            100% {
-                transform: translate(0, 0) rotate(0deg);
-            }
-
-            33% {
-                transform: translate(30px, -30px) rotate(120deg);
-            }
-
-            66% {
-                transform: translate(-20px, 20px) rotate(240deg);
-            }
-        }
-
-        /* 粒子效果 */
-        .particles {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            pointer-events: none;
-            z-index: 1;
-        }
-
-        .particle {
-            position: absolute;
-            width: 4px;
-            height: 4px;
-            background: rgba(96, 165, 250, 0.5);
-            border-radius: 50%;
-            animation: rise 15s infinite;
-        }
-
-        @keyframes rise {
-            0% {
-                transform: translateY(100vh) scale(0);
-                opacity: 0;
-            }
-
-            10% {
-                opacity: 1;
-            }
-
-            90% {
-                opacity: 1;
-            }
-
-            100% {
-                transform: translateY(-100vh) scale(1.5);
-                opacity: 0;
-            }
-        }
-
-        /* 主容器 */
-        .container {
+        .page {
             position: relative;
-            z-index: 10;
-            max-width: 1200px;
+            z-index: 1;
+            max-width: 1180px;
             margin: 0 auto;
-            padding: 60px 20px;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+            padding: 40px 20px 56px;
         }
 
-        /* 头部 */
-        .header {
-            text-align: center;
-            margin-bottom: 60px;
+        .hero {
+            display: grid;
+            grid-template-columns: 1.4fr 1fr;
+            gap: 24px;
+            align-items: stretch;
+            margin-bottom: 28px;
         }
 
-        .logo {
-            font-size: 64px;
-            margin-bottom: 20px;
-            display: inline-block;
-            animation: pulse 2s ease-in-out infinite;
+        .hero-panel,
+        .side-panel,
+        .card,
+        .feature-link {
+            background: var(--panel);
+            backdrop-filter: blur(18px);
+            border: 1px solid var(--line);
+            border-radius: 28px;
+            box-shadow: var(--shadow);
         }
 
-        @keyframes pulse {
+        .hero-panel {
+            padding: 34px 34px 28px;
+            position: relative;
+            overflow: hidden;
+        }
 
-            0%,
-            100% {
-                transform: scale(1);
-            }
+        .hero-panel::after {
+            content: "";
+            position: absolute;
+            width: 260px;
+            height: 260px;
+            right: -60px;
+            top: -70px;
+            border-radius: 50%;
+            background: radial-gradient(circle, rgba(87, 166, 255, 0.28), transparent 65%);
+        }
 
-            50% {
-                transform: scale(1.1);
-            }
+        .eyebrow {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 14px;
+            border-radius: 999px;
+            background: rgba(87, 166, 255, 0.12);
+            border: 1px solid rgba(87, 166, 255, 0.24);
+            color: #bee0ff;
+            font-size: 13px;
+            letter-spacing: 0.05em;
         }
 
         h1 {
-            font-size: 42px;
-            font-weight: 700;
-            background: linear-gradient(135deg, #60a5fa 0%, #34d399 50%, #f472b6 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 16px;
-            letter-spacing: -0.5px;
+            margin: 18px 0 14px;
+            font-size: clamp(34px, 5vw, 54px);
+            line-height: 1.05;
+            letter-spacing: -0.04em;
         }
 
-        .subtitle {
-            font-size: 18px;
-            color: #94a3b8;
-            max-width: 600px;
-            margin: 0 auto;
-            line-height: 1.6;
+        .hero-copy {
+            max-width: 640px;
+            color: var(--muted);
+            font-size: 16px;
+            line-height: 1.75;
+            margin-bottom: 26px;
         }
 
-        /* 统计卡片 */
-        .stats-bar {
+        .hero-meta {
             display: flex;
-            justify-content: center;
-            gap: 40px;
-            margin-bottom: 60px;
             flex-wrap: wrap;
+            gap: 12px;
         }
 
-        .stat-card {
-            text-align: center;
-            padding: 20px;
+        .meta-pill {
+            padding: 10px 14px;
+            border-radius: 14px;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(255, 255, 255, 0.04);
+            color: var(--muted);
+            font-size: 13px;
         }
 
-        .stat-number {
-            font-size: 36px;
+        .side-panel {
+            padding: 28px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            gap: 18px;
+        }
+
+        .section-title {
+            margin: 0 0 6px;
+            font-size: 14px;
+            color: var(--muted);
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+        }
+
+        .status-line {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .status-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background: var(--warning);
+            box-shadow: 0 0 0 6px rgba(245, 191, 79, 0.1);
+        }
+
+        .status-dot.running {
+            background: var(--accent);
+            box-shadow: 0 0 0 6px rgba(78, 205, 196, 0.12);
+            animation: pulse 1.2s infinite;
+        }
+
+        .status-dot.success {
+            background: var(--success);
+            box-shadow: 0 0 0 6px rgba(94, 229, 155, 0.12);
+        }
+
+        .status-dot.failed {
+            background: var(--danger);
+            box-shadow: 0 0 0 6px rgba(255, 123, 114, 0.12);
+        }
+
+        @keyframes pulse {
+            0% {
+                transform: scale(1);
+                opacity: 1;
+            }
+
+            50% {
+                transform: scale(1.15);
+                opacity: 0.7;
+            }
+
+            100% {
+                transform: scale(1);
+                opacity: 1;
+            }
+        }
+
+        .status-label {
+            font-size: 20px;
             font-weight: 700;
-            color: #60a5fa;
-            display: block;
-            margin-bottom: 8px;
+        }
+
+        .status-text {
+            color: var(--muted);
+            line-height: 1.7;
+            font-size: 14px;
+        }
+
+        .stats-grid,
+        .feature-grid,
+        .detail-grid {
+            display: grid;
+            gap: 18px;
+        }
+
+        .stats-grid {
+            grid-template-columns: repeat(3, minmax(0, 1fr));
+            margin-bottom: 28px;
+        }
+
+        .card {
+            padding: 22px;
         }
 
         .stat-label {
-            font-size: 14px;
-            color: #64748b;
-            text-transform: uppercase;
-            letter-spacing: 1px;
+            color: var(--muted);
+            font-size: 13px;
+            margin-bottom: 10px;
         }
 
-        /* 功能卡片网格 */
-        .features-grid {
+        .stat-value {
+            font-size: clamp(26px, 4vw, 40px);
+            font-weight: 800;
+            letter-spacing: -0.04em;
+            margin-bottom: 6px;
+        }
+
+        .stat-note {
+            font-size: 13px;
+            color: var(--muted);
+        }
+
+        .control-card {
             display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
-            gap: 30px;
-            max-width: 900px;
-            margin: 0 auto;
-            width: 100%;
+            grid-template-columns: 1.05fr 1fr;
+            gap: 18px;
+            margin-bottom: 28px;
         }
 
-        .feature-card {
-            background: rgba(30, 41, 59, 0.6);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(148, 163, 184, 0.1);
-            border-radius: 24px;
-            padding: 40px;
-            text-decoration: none;
-            color: inherit;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-            position: relative;
-            overflow: hidden;
-            cursor: pointer;
-        }
-
-        .feature-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: linear-gradient(135deg, rgba(96, 165, 250, 0.1) 0%, transparent 50%);
-            opacity: 0;
-            transition: opacity 0.4s;
-        }
-
-        .feature-card:hover {
-            transform: translateY(-8px);
-            border-color: rgba(96, 165, 250, 0.3);
-            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
-        }
-
-        .feature-card:hover::before {
-            opacity: 1;
-        }
-
-        .feature-icon {
-            width: 80px;
-            height: 80px;
-            border-radius: 20px;
+        .control-panel {
             display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 40px;
-            margin-bottom: 24px;
-            position: relative;
+            flex-direction: column;
+            gap: 16px;
         }
 
-        .feature-card.graph .feature-icon {
-            background: linear-gradient(135deg, rgba(96, 165, 250, 0.2) 0%, rgba(96, 165, 250, 0.05) 100%);
-            border: 1px solid rgba(96, 165, 250, 0.3);
+        .control-lead {
+            color: var(--muted);
+            line-height: 1.7;
+            font-size: 14px;
         }
 
-        .feature-card.table .feature-icon {
-            background: linear-gradient(135deg, rgba(52, 211, 153, 0.2) 0%, rgba(52, 211, 153, 0.05) 100%);
-            border: 1px solid rgba(52, 211, 153, 0.3);
+        .input-row {
+            display: grid;
+            grid-template-columns: 1fr auto;
+            gap: 12px;
+            align-items: end;
         }
 
-        .feature-title {
-            font-size: 24px;
-            font-weight: 600;
-            margin-bottom: 12px;
-            color: #f8fafc;
-        }
-
-        .feature-card.graph .feature-title {
-            color: #60a5fa;
-        }
-
-        .feature-card.table .feature-title {
-            color: #34d399;
-        }
-
-        .feature-desc {
-            font-size: 15px;
-            color: #94a3b8;
-            line-height: 1.6;
-            margin-bottom: 24px;
-        }
-
-        .feature-tags {
+        .field {
             display: flex;
-            flex-wrap: wrap;
+            flex-direction: column;
             gap: 8px;
         }
 
-        .feature-tag {
-            padding: 6px 14px;
-            background: rgba(15, 23, 42, 0.6);
-            border-radius: 20px;
-            font-size: 12px;
-            color: #64748b;
-            border: 1px solid rgba(148, 163, 184, 0.1);
+        .field label {
+            font-size: 13px;
+            color: var(--muted);
         }
 
-        .feature-arrow {
-            position: absolute;
-            bottom: 30px;
-            right: 30px;
-            width: 48px;
-            height: 48px;
-            border-radius: 50%;
+        input[type="number"] {
+            width: 100%;
+            padding: 14px 16px;
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
             background: rgba(255, 255, 255, 0.05);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 20px;
-            transition: all 0.3s;
+            color: var(--text);
+            font-size: 18px;
+            outline: none;
+        }
+
+        input[type="number"]:focus {
+            border-color: rgba(87, 166, 255, 0.55);
+            box-shadow: 0 0 0 4px rgba(87, 166, 255, 0.12);
+        }
+
+        button {
+            border: 0;
+            border-radius: 16px;
+            padding: 14px 20px;
+            font-size: 15px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: transform 0.2s ease, opacity 0.2s ease, background 0.2s ease;
+        }
+
+        button:hover:not(:disabled) {
+            transform: translateY(-1px);
+        }
+
+        button:disabled {
+            cursor: wait;
+            opacity: 0.62;
+        }
+
+        .primary-btn {
+            min-width: 156px;
+            background: linear-gradient(135deg, var(--accent) 0%, var(--accent-2) 100%);
+            color: #041220;
+        }
+
+        .secondary-btn {
+            background: rgba(255, 255, 255, 0.06);
+            color: var(--text);
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
 
-        .feature-card:hover .feature-arrow {
-            background: rgba(96, 165, 250, 0.2);
-            transform: translateX(5px);
-            border-color: rgba(96, 165, 250, 0.3);
+        .detail-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
         }
 
-        .feature-card.table:hover .feature-arrow {
-            background: rgba(52, 211, 153, 0.2);
-            border-color: rgba(52, 211, 153, 0.3);
+        .detail-item {
+            padding: 16px;
+            border-radius: 18px;
+            background: var(--panel-strong);
+            border: 1px solid rgba(255, 255, 255, 0.06);
         }
 
-        /* 页脚 */
-        .footer {
-            margin-top: 80px;
-            text-align: center;
-            color: #64748b;
+        .detail-key {
+            font-size: 12px;
+            color: var(--muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+        }
+
+        .detail-value {
+            font-size: 15px;
+            line-height: 1.7;
+            word-break: break-word;
+        }
+
+        .diff-box {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 14px;
+        }
+
+        .diff-pill {
+            padding: 8px 12px;
+            border-radius: 999px;
+            font-size: 13px;
+            border: 1px solid transparent;
+        }
+
+        .diff-pill.added {
+            background: rgba(94, 229, 155, 0.12);
+            color: var(--success);
+            border-color: rgba(94, 229, 155, 0.2);
+        }
+
+        .diff-pill.removed {
+            background: rgba(255, 123, 114, 0.12);
+            color: var(--danger);
+            border-color: rgba(255, 123, 114, 0.2);
+        }
+
+        .diff-pill.same {
+            background: rgba(87, 166, 255, 0.12);
+            color: #bee0ff;
+            border-color: rgba(87, 166, 255, 0.2);
+        }
+
+        .inline-list {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .chip {
+            max-width: 100%;
+            padding: 8px 10px;
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            font-size: 12px;
+            color: #dbe8f8;
+            word-break: break-all;
+        }
+
+        .feature-grid {
+            grid-template-columns: repeat(2, minmax(0, 1fr));
+        }
+
+        .feature-link {
+            padding: 24px;
+            text-decoration: none;
+            color: inherit;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .feature-link:hover {
+            transform: translateY(-4px);
+            border-color: rgba(87, 166, 255, 0.34);
+        }
+
+        .feature-head {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            margin-bottom: 14px;
+        }
+
+        .feature-head strong {
+            font-size: 22px;
+        }
+
+        .feature-desc {
+            color: var(--muted);
+            line-height: 1.7;
             font-size: 14px;
         }
 
-        .footer-links {
-            display: flex;
-            justify-content: center;
-            gap: 30px;
-            margin-bottom: 20px;
+        .notice {
+            margin-top: 14px;
+            padding: 14px 16px;
+            border-radius: 16px;
+            background: rgba(255, 123, 114, 0.08);
+            border: 1px solid rgba(255, 123, 114, 0.15);
+            color: #ffd0cb;
+            display: none;
         }
 
-        .footer-link {
-            color: #94a3b8;
-            text-decoration: none;
-            transition: color 0.3s;
-            display: flex;
-            align-items: center;
-            gap: 6px;
+        .notice.visible {
+            display: block;
         }
 
-        .footer-link:hover {
-            color: #60a5fa;
+        .footer {
+            margin-top: 30px;
+            color: var(--muted);
+            text-align: center;
+            font-size: 13px;
+            line-height: 1.8;
         }
 
-        /* 响应式 */
-        @media (max-width: 768px) {
-            h1 {
-                font-size: 28px;
-            }
-
-            .subtitle {
-                font-size: 16px;
-            }
-
-            .logo {
-                font-size: 48px;
-            }
-
-            .stats-bar {
-                gap: 20px;
-            }
-
-            .stat-number {
-                font-size: 28px;
-            }
-
-            .features-grid {
+        @media (max-width: 900px) {
+            .hero,
+            .control-card,
+            .stats-grid,
+            .feature-grid {
                 grid-template-columns: 1fr;
             }
 
-            .feature-card {
-                padding: 30px;
+            .detail-grid {
+                grid-template-columns: 1fr;
             }
-        }
 
-        /* 加载动画 */
-        .loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #0f172a;
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.5s, visibility 0.5s;
-        }
-
-        .loading-overlay.hidden {
-            opacity: 0;
-            visibility: hidden;
-        }
-
-        .loading-spinner {
-            width: 60px;
-            height: 60px;
-            border: 3px solid rgba(96, 165, 250, 0.2);
-            border-top-color: #60a5fa;
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-        }
-
-        @keyframes spin {
-            to {
-                transform: rotate(360deg);
+            .input-row {
+                grid-template-columns: 1fr;
             }
         }
     </style>
 </head>
 
 <body>
-    <!-- 加载动画 -->
-    <div class="loading-overlay" id="loading">
-        <div class="loading-spinner"></div>
-    </div>
-
-    <!-- 背景动画 -->
-    <div class="bg-animation"></div>
-    <div class="particles" id="particles"></div>
-
-    <!-- 主内容 -->
-    <div class="container">
-        <header class="header">
-            <div class="logo">🤗</div>
-            <h1>HuggingFace 模型血缘分析平台</h1>
-            <p class="subtitle">
-                可视化探索 HuggingFace 模型之间的继承关系，追踪模型演化脉络，
-                发现热门模型及其衍生生态
-            </p>
-        </header>
-
-        <div class="stats-bar">
-            <div class="stat-card">
-                <span class="stat-number" id="statModels">0</span>
-                <span class="stat-label">模型总数</span>
-            </div>
-            <div class="stat-card">
-                <span class="stat-number" id="statRelations">0</span>
-                <span class="stat-label">继承关系</span>
-            </div>
-            <div class="stat-card">
-                <span class="stat-number" id="statOrgs">0</span>
-                <span class="stat-label">组织机构</span>
-            </div>
-        </div>
-
-        <div class="features-grid">
-            <!-- 图形化分析 -->
-            <a href="graph.html" class="feature-card graph">
-                <div class="feature-icon">🕸️</div>
-                <h2 class="feature-title">血缘关系图谱</h2>
-                <p class="feature-desc">
-                    交互式力导向图可视化，直观展示模型间的继承关系。
-                    支持缩放、拖拽、搜索，点击节点查看详情和上下游关系。
+    <main class="page">
+        <section class="hero">
+            <div class="hero-panel">
+                <div class="eyebrow">LLM Genealogy / Hugging Face Top Models</div>
+                <h1>在首页直接更新模型谱系数据</h1>
+                <p class="hero-copy">
+                    这里可以手动输入要抓取的大模型数量，点击按钮立即刷新。
+                    系统会把这个数量保存下来，之后每周更新都沿用同一个数量，并且只对和上一次结果不同的模型做增减。
                 </p>
-                <div class="feature-tags">
-                    <span class="feature-tag">力导向布局</span>
-                    <span class="feature-tag">交互式探索</span>
-                    <span class="feature-tag">路径追踪</span>
+                <div class="hero-meta">
+                    <div class="meta-pill">增量更新：仅新增与移除差异</div>
+                    <div class="meta-pill">配置持久化：保存抓取数量</div>
+                    <div class="meta-pill">自动周更：服务运行时自动检查</div>
                 </div>
-                <div class="feature-arrow">→</div>
-            </a>
+            </div>
 
-            <!-- 数据表格 -->
-            <a href="table.html" class="feature-card table">
-                <div class="feature-icon">📊</div>
-                <h2 class="feature-title">模型数据表格</h2>
-                <p class="feature-desc">
-                    完整的模型元数据表格，支持排序、筛选、搜索和导出。
-                    快速查找模型信息，对比下载量和衍生关系。
-                </p>
-                <div class="feature-tags">
-                    <span class="feature-tag">多维筛选</span>
-                    <span class="feature-tag">实时搜索</span>
-                    <span class="feature-tag">CSV导出</span>
+            <aside class="side-panel">
+                <div>
+                    <p class="section-title">更新状态</p>
+                    <div class="status-line">
+                        <span class="status-dot" id="statusDot"></span>
+                        <span class="status-label" id="statusLabel">正在读取状态</span>
+                    </div>
+                    <div class="status-text" id="statusText">页面会从本地服务读取当前配置、最近一次更新时间和增量结果。</div>
                 </div>
-                <div class="feature-arrow">→</div>
+                <div class="detail-item">
+                    <div class="detail-key">下次自动周更</div>
+                    <div class="detail-value" id="nextWeeklyText">尚未安排</div>
+                </div>
+            </aside>
+        </section>
+
+        <section class="stats-grid">
+            <article class="card">
+                <div class="stat-label">模型总数</div>
+                <div class="stat-value" id="statModels">0</div>
+                <div class="stat-note">当前保存在数据集中的模型记录数</div>
+            </article>
+            <article class="card">
+                <div class="stat-label">继承关系</div>
+                <div class="stat-value" id="statRelations">0</div>
+                <div class="stat-note">存在基座模型指向的关系条数</div>
+            </article>
+            <article class="card">
+                <div class="stat-label">组织作者</div>
+                <div class="stat-value" id="statOrgs">0</div>
+                <div class="stat-note">当前数据里去重后的作者数量</div>
+            </article>
+        </section>
+
+        <section class="control-card">
+            <article class="card control-panel">
+                <div>
+                    <p class="section-title">手动更新</p>
+                    <p class="control-lead">
+                        这里输入想要抓取的 Top N 模型数量。点击更新后，这个数量会立即生效，并作为之后每周自动更新时使用的固定数量。
+                    </p>
+                </div>
+
+                <div class="input-row">
+                    <div class="field">
+                        <label for="crawlLimit">抓取数量</label>
+                        <input id="crawlLimit" type="number" min="1" max="1000" step="1" value="5">
+                    </div>
+                    <button class="primary-btn" id="updateBtn" type="button">立即更新</button>
+                </div>
+
+                <div class="detail-item">
+                    <div class="detail-key">当前已保存数量</div>
+                    <div class="detail-value" id="savedLimitText">5</div>
+                </div>
+
+                <div class="notice" id="serverNotice">
+                    当前无法访问本地更新接口。请使用 <code>python server.py</code> 启动项目后，再通过首页进行更新。
+                </div>
+            </article>
+
+            <article class="card">
+                <p class="section-title">最近一次更新结果</p>
+                <div class="detail-grid">
+                    <div class="detail-item">
+                        <div class="detail-key">最近完成时间</div>
+                        <div class="detail-value" id="lastCompletedText">暂无</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-key">触发方式</div>
+                        <div class="detail-value" id="lastTriggerText">暂无</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-key">最近错误</div>
+                        <div class="detail-value" id="lastErrorText">无</div>
+                    </div>
+                    <div class="detail-item">
+                        <div class="detail-key">运行中状态</div>
+                        <div class="detail-value" id="runtimeText">空闲</div>
+                    </div>
+                </div>
+                <div class="diff-box">
+                    <span class="diff-pill added" id="addedCount">新增 0</span>
+                    <span class="diff-pill removed" id="removedCount">移除 0</span>
+                    <span class="diff-pill same" id="sameCount">保留 0</span>
+                </div>
+                <div>
+                    <div class="section-title" style="margin-top: 18px;">新增模型</div>
+                    <div class="inline-list" id="addedModelsList">
+                        <span class="chip">暂无</span>
+                    </div>
+                </div>
+                <div>
+                    <div class="section-title" style="margin-top: 18px;">移除模型</div>
+                    <div class="inline-list" id="removedModelsList">
+                        <span class="chip">暂无</span>
+                    </div>
+                </div>
+            </article>
+        </section>
+
+        <section class="feature-grid">
+            <a class="feature-link" href="graph.html">
+                <div class="feature-head">
+                    <strong>关系图谱</strong>
+                    <span>→</span>
+                </div>
+                <p class="feature-desc">
+                    查看模型之间的基座与衍生关系。图谱页会继续读取仓库根目录生成的
+                    <code>hf_models_has_base.csv</code>。
+                </p>
             </a>
-        </div>
+            <a class="feature-link" href="table.html">
+                <div class="feature-head">
+                    <strong>数据表格</strong>
+                    <span>→</span>
+                </div>
+                <p class="feature-desc">
+                    浏览明细字段、导出 CSV，或者继续用自己的文件做本地对照分析。
+                </p>
+            </a>
+        </section>
 
         <footer class="footer">
-            <div class="footer-links">
-                <a href="#" class="footer-link">
-                    <span>📖</span> 使用文档
-                </a>
-                <a href="#" class="footer-link">
-                    <span>💾</span> 数据下载
-                </a>
-                <a href="https://huggingface.co" target="_blank" class="footer-link">
-                    <span>🌐</span> HuggingFace
-                </a>
-            </div>
-            <p>基于 HuggingFace 模型数据构建 · 实时更新</p>
+            本地交互更新入口基于 <code>/api/status</code> 与 <code>/api/update</code>。<br>
+            如果要让首页按钮可用，请从项目根目录运行 <code>python server.py</code>。
         </footer>
-    </div>
+    </main>
 
     <script>
-        // 生成粒子
-        function createParticles() {
-            const container = document.getElementById('particles');
-            for (let i = 0; i < 50; i++) {
-                const particle = document.createElement('div');
-                particle.className = 'particle';
-                particle.style.left = Math.random() * 100 + '%';
-                particle.style.animationDelay = Math.random() * 15 + 's';
-                particle.style.animationDuration = (10 + Math.random() * 10) + 's';
-                container.appendChild(particle);
+        const state = {
+            pollingTimer: null,
+            fastPollingTimer: null,
+            apiAvailable: true,
+        };
+
+        function formatNumber(value) {
+            const number = Number(value || 0);
+            if (!Number.isFinite(number)) return "0";
+            return new Intl.NumberFormat("zh-CN").format(number);
+        }
+
+        function formatDate(value) {
+            if (!value) return "暂无";
+            const date = new Date(value);
+            if (Number.isNaN(date.getTime())) return String(value);
+            return new Intl.DateTimeFormat("zh-CN", {
+                dateStyle: "medium",
+                timeStyle: "short",
+                hour12: false,
+            }).format(date);
+        }
+
+        function renderList(elementId, items) {
+            const container = document.getElementById(elementId);
+            if (!Array.isArray(items) || items.length === 0) {
+                container.innerHTML = '<span class="chip">暂无</span>';
+                return;
+            }
+            container.innerHTML = items.map(item => `<span class="chip">${escapeHtml(item)}</span>`).join("");
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement("div");
+            div.textContent = text == null ? "" : String(text);
+            return div.innerHTML;
+        }
+
+        function renderStatus(payload) {
+            const stats = payload.stats || {};
+            const config = payload.config || {};
+            const status = payload.status || {};
+            const runtime = payload.runtime || {};
+            const diff = status.last_diff || {};
+
+            document.getElementById("statModels").textContent = formatNumber(stats.models);
+            document.getElementById("statRelations").textContent = formatNumber(stats.relations);
+            document.getElementById("statOrgs").textContent = formatNumber(stats.organizations);
+            document.getElementById("crawlLimit").value = config.crawl_limit || 5;
+            document.getElementById("savedLimitText").textContent = `${config.crawl_limit || 5} 个模型`;
+            document.getElementById("nextWeeklyText").textContent = formatDate(status.next_scheduled_update_at);
+            document.getElementById("lastCompletedText").textContent = formatDate(status.last_completed_at || config.last_successful_update);
+            document.getElementById("lastTriggerText").textContent = status.last_trigger || "暂无";
+            document.getElementById("lastErrorText").textContent = status.last_error || "无";
+            document.getElementById("runtimeText").textContent = runtime.is_running ? "运行中" : "空闲";
+
+            document.getElementById("addedCount").textContent = `新增 ${diff.added_count || 0}`;
+            document.getElementById("removedCount").textContent = `移除 ${diff.removed_count || 0}`;
+            document.getElementById("sameCount").textContent = `保留 ${diff.unchanged_count || 0}`;
+            renderList("addedModelsList", diff.added_models || []);
+            renderList("removedModelsList", diff.removed_models || []);
+
+            const dot = document.getElementById("statusDot");
+            const label = document.getElementById("statusLabel");
+            const text = document.getElementById("statusText");
+            dot.className = "status-dot";
+
+            if (runtime.is_running || status.state === "running") {
+                dot.classList.add("running");
+                label.textContent = "更新中";
+                text.textContent = status.message || "正在按当前数量抓取模型，并仅同步与上次不同的结果。";
+                document.getElementById("updateBtn").disabled = true;
+            } else if (status.state === "failed") {
+                dot.classList.add("failed");
+                label.textContent = "更新失败";
+                text.textContent = status.last_error || status.message || "最近一次更新失败，请检查错误信息后重试。";
+                document.getElementById("updateBtn").disabled = false;
+            } else if ((status.last_completed_at || config.last_successful_update)) {
+                dot.classList.add("success");
+                label.textContent = "已同步";
+                text.textContent = status.message || "数据已同步完成，后续每周会沿用当前保存的抓取数量。";
+                document.getElementById("updateBtn").disabled = false;
+            } else {
+                label.textContent = "等待首次更新";
+                text.textContent = "还没有成功更新记录。设置抓取数量后点击立即更新即可初始化数据。";
+                document.getElementById("updateBtn").disabled = false;
             }
         }
 
-        // 模拟统计数据（实际使用时可以从后端获取）
-        function loadStats() {
-            // 这里可以替换为真实的 API 调用
-            const stats = {
-                models: 15420,
-                relations: 8934,
-                orgs: 2847
-            };
-
-            // 数字动画
-            animateNumber('statModels', stats.models);
-            animateNumber('statRelations', stats.relations);
-            animateNumber('statOrgs', stats.orgs);
+        function setApiNotice(visible) {
+            state.apiAvailable = !visible;
+            document.getElementById("serverNotice").classList.toggle("visible", visible);
+            document.getElementById("updateBtn").disabled = visible;
         }
 
-        function animateNumber(id, target) {
-            const element = document.getElementById(id);
-            const duration = 2000;
-            const start = 0;
-            const startTime = performance.now();
+        async function fetchStatus() {
+            try {
+                const response = await fetch("/api/status", { cache: "no-store" });
+                if (!response.ok) throw new Error(`HTTP ${response.status}`);
+                const payload = await response.json();
+                setApiNotice(false);
+                renderStatus(payload);
+                configurePolling(payload);
+            } catch (error) {
+                setApiNotice(true);
+                console.error(error);
+            }
+        }
 
-            function update(currentTime) {
-                const elapsed = currentTime - startTime;
-                const progress = Math.min(elapsed / duration, 1);
+        function configurePolling(payload) {
+            const isRunning = payload?.runtime?.is_running || payload?.status?.state === "running";
+            if (state.fastPollingTimer) {
+                clearInterval(state.fastPollingTimer);
+                state.fastPollingTimer = null;
+            }
+            if (isRunning) {
+                state.fastPollingTimer = setInterval(fetchStatus, 3000);
+            }
+        }
 
-                // easeOutQuart
-                const ease = 1 - Math.pow(1 - progress, 4);
-                const current = Math.floor(start + (target - start) * ease);
+        async function startUpdate() {
+            if (!state.apiAvailable) return;
 
-                element.textContent = formatNumber(current);
+            const limit = Number(document.getElementById("crawlLimit").value);
+            if (!Number.isInteger(limit) || limit < 1 || limit > 1000) {
+                window.alert("请输入 1 到 1000 之间的整数。");
+                return;
+            }
 
-                if (progress < 1) {
-                    requestAnimationFrame(update);
+            const button = document.getElementById("updateBtn");
+            button.disabled = true;
+
+            try {
+                const response = await fetch("/api/update", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                    },
+                    body: JSON.stringify({ limit }),
+                });
+                const payload = await response.json();
+                if (!response.ok && response.status !== 202) {
+                    throw new Error(payload.error || payload.message || "更新请求失败");
                 }
+                await fetchStatus();
+            } catch (error) {
+                button.disabled = false;
+                window.alert(error.message || "更新请求失败");
             }
-
-            requestAnimationFrame(update);
         }
 
-        function formatNumber(num) {
-            if (num >= 10000) return (num / 10000).toFixed(1) + '万';
-            if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
-            return num.toLocaleString();
-        }
-
-        // 页面加载
-        window.addEventListener('load', () => {
-            createParticles();
-            loadStats();
-
-            setTimeout(() => {
-                document.getElementById('loading').classList.add('hidden');
-            }, 800);
-        });
-
-        // 添加键盘导航
-        document.addEventListener('keydown', (e) => {
-            if (e.key === '1') window.location.href = 'graph.html';
-            if (e.key === '2') window.location.href = 'table.html';
-        });
+        document.getElementById("updateBtn").addEventListener("click", startUpdate);
+        fetchStatus();
+        state.pollingTimer = setInterval(fetchStatus, 15000);
     </script>
 </body>
 

@@ -1,48 +1,43 @@
-name: 每月自动更新模型数据
+name: Weekly Model Data Update
 
 on:
   schedule:
-    - cron: '0 0 1 * *'  # UTC每月1号0点（对应北京时间每月1号8点）
-  workflow_dispatch:     # 保留手动触发能力
+    - cron: "0 0 * * 1"
+  workflow_dispatch:
 
 jobs:
   run-update:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
-      - name: 检出仓库代码
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          ref: main  # 若仓库默认分支为master，替换为master
+          ref: main
           fetch-depth: 0
 
-      - name: 设置 Python 环境
+      - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
-          cache: 'pip'
+          python-version: "3.11"
+          cache: "pip"
           cache-dependency-path: requirements.txt
 
-      - name: 安装全量依赖
-        # 直接从requirements.txt安装，统一管理依赖
+      - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: 执行数据抓取与过滤脚本
-        run: |
-          set -e
-          python crawl.py
-          python filter_from_csv.py
-        # env:
-        #   HF_TOKEN: ${{ secrets.HF_TOKEN }}
+      - name: Run weekly incremental update
+        run: python server.py --once --trigger github_actions
 
-      - name: 提交并推送更新到仓库
+      - name: Commit updated data
         run: |
           git config --global user.name "Auto Update"
           git config --global user.email "auto@github.com"
-          git add hf_models_has_base.csv
+          git add data hf_models_has_base.csv
           git diff --staged --quiet && exit 0
           git commit -m "Auto update model data $(date +'%Y-%m-%d')"
           git push origin HEAD:main
