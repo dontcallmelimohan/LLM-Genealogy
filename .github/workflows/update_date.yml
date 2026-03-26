@@ -1,0 +1,35 @@
+name: 每月自动更新模型数据
+
+on:
+  schedule:
+    - cron: '0 0 1 * *'  # 每月 1 号 0 点运行
+  workflow_dispatch:     # 允许手动点击运行
+
+jobs:
+  run-update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: 设置 Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 安装依赖
+        run: |
+          python -m pip install --upgrade pip
+          pip install pandas aiohttp huggingface-hub
+
+      - name: 运行抓取脚本
+        run: |
+          python crawl.py
+          python filter_from_csv.py
+
+      - name: 提交更新到仓库
+        run: |
+          git config --global user.name "Auto Update"
+          git config --global user.email "auto@github.com"
+          git add hf_models_has_base.csv
+          git commit -m "Auto update model data"
+          git push

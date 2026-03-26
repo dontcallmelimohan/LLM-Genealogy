@@ -1,0 +1,954 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HuggingFace 模型数据表格</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 100%;
+            padding: 20px;
+        }
+
+        .header {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+
+        h1 {
+            font-size: 24px;
+            color: #60a5fa;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .stats {
+            display: flex;
+            gap: 20px;
+            color: #94a3b8;
+            font-size: 14px;
+        }
+
+        .stat-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .stat-value {
+            color: #60a5fa;
+            font-weight: 600;
+        }
+
+        /* 工具栏 */
+        .toolbar {
+            background: #1e293b;
+            padding: 15px 20px;
+            border-radius: 12px;
+            margin-bottom: 15px;
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: center;
+            border: 1px solid #334155;
+        }
+
+        .search-box {
+            position: relative;
+            flex: 1;
+            min-width: 250px;
+            max-width: 400px;
+        }
+
+        .search-box input {
+            width: 100%;
+            padding: 10px 15px 10px 40px;
+            background: #0f172a;
+            border: 1px solid #475569;
+            border-radius: 8px;
+            color: #e2e8f0;
+            font-size: 14px;
+            outline: none;
+            transition: all 0.3s;
+        }
+
+        .search-box input:focus {
+            border-color: #60a5fa;
+            box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.1);
+        }
+
+        .search-icon {
+            position: absolute;
+            left: 12px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #64748b;
+        }
+
+        .filter-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .filter-label {
+            color: #94a3b8;
+            font-size: 13px;
+        }
+
+        select {
+            padding: 8px 12px;
+            background: #0f172a;
+            border: 1px solid #475569;
+            border-radius: 6px;
+            color: #e2e8f0;
+            font-size: 13px;
+            cursor: pointer;
+            outline: none;
+        }
+
+        select:focus {
+            border-color: #60a5fa;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            background: rgba(96, 165, 250, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.3);
+            color: #60a5fa;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .btn:hover {
+            background: rgba(96, 165, 250, 0.2);
+        }
+
+        .btn.active {
+            background: #60a5fa;
+            color: #0f172a;
+        }
+
+        /* 表格容器 */
+        .table-container {
+            background: #1e293b;
+            border-radius: 12px;
+            border: 1px solid #334155;
+            overflow: hidden;
+        }
+
+        .table-wrapper {
+            overflow-x: auto;
+            max-height: calc(100vh - 220px);
+            overflow-y: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 10;
+        }
+
+        th {
+            background: #0f172a;
+            padding: 12px 15px;
+            text-align: left;
+            font-weight: 600;
+            color: #94a3b8;
+            border-bottom: 2px solid #334155;
+            white-space: nowrap;
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.3s;
+        }
+
+        th:hover {
+            color: #60a5fa;
+            background: #1e293b;
+        }
+
+        th .sort-icon {
+            margin-left: 5px;
+            opacity: 0.5;
+            font-size: 10px;
+        }
+
+        th.sort-asc .sort-icon::after {
+            content: '▲';
+            opacity: 1;
+            color: #60a5fa;
+        }
+
+        th.sort-desc .sort-icon::after {
+            content: '▼';
+            opacity: 1;
+            color: #60a5fa;
+        }
+
+        td {
+            padding: 12px 15px;
+            border-bottom: 1px solid #334155;
+            vertical-align: top;
+            max-width: 300px;
+        }
+
+        tr:hover {
+            background: rgba(96, 165, 250, 0.05);
+        }
+
+        /* 单元格内容样式 */
+        .cell-model-id {
+            font-family: 'Monaco', 'Menlo', monospace;
+            color: #60a5fa;
+            font-weight: 500;
+            word-break: break-all;
+        }
+
+        .cell-base-model {
+            font-family: 'Monaco', 'Menlo', monospace;
+            color: #34d399;
+            word-break: break-all;
+        }
+
+        .cell-base-model.empty {
+            color: #64748b;
+            font-style: italic;
+        }
+
+        .cell-number {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+        }
+
+        .cell-valid {
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            padding: 3px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 500;
+        }
+
+        .cell-valid.valid {
+            background: rgba(52, 211, 153, 0.15);
+            color: #34d399;
+        }
+
+        .cell-valid.invalid {
+            background: rgba(248, 113, 113, 0.15);
+            color: #f87171;
+        }
+
+        .cell-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            max-width: 250px;
+        }
+
+        .tag {
+            padding: 2px 8px;
+            background: rgba(96, 165, 250, 0.1);
+            border: 1px solid rgba(96, 165, 250, 0.2);
+            border-radius: 4px;
+            font-size: 10px;
+            color: #60a5fa;
+            white-space: nowrap;
+        }
+
+        .tag.more {
+            background: rgba(148, 163, 184, 0.1);
+            color: #94a3b8;
+            border-color: rgba(148, 163, 184, 0.2);
+        }
+
+        .cell-pipeline {
+            color: #f472b6;
+            font-weight: 500;
+        }
+
+        .cell-library {
+            color: #fbbf24;
+        }
+
+        .cell-source {
+            color: #94a3b8;
+            font-size: 11px;
+        }
+
+        /* 空状态 */
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #64748b;
+        }
+
+        .empty-icon {
+            font-size: 48px;
+            margin-bottom: 16px;
+            opacity: 0.5;
+        }
+
+        /* 加载动画 */
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #64748b;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(96, 165, 250, 0.3);
+            border-top-color: #60a5fa;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 16px;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        /* 响应式 */
+        @media (max-width: 768px) {
+            .toolbar {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .search-box {
+                max-width: 100%;
+            }
+
+            .table-wrapper {
+                max-height: calc(100vh - 300px);
+            }
+
+            th,
+            td {
+                padding: 8px 10px;
+                font-size: 11px;
+            }
+        }
+
+        /* 详情展开行 */
+        .detail-row {
+            background: #0f172a;
+            display: none;
+        }
+
+        .detail-row.active {
+            display: table-row;
+        }
+
+        .detail-content {
+            padding: 15px;
+        }
+
+        .detail-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+
+        .detail-item {
+            background: #1e293b;
+            padding: 10px;
+            border-radius: 6px;
+        }
+
+        .detail-label {
+            font-size: 11px;
+            color: #64748b;
+            margin-bottom: 4px;
+        }
+
+        .detail-value {
+            font-size: 12px;
+            color: #e2e8f0;
+            word-break: break-all;
+        }
+
+        .expand-btn {
+            cursor: pointer;
+            color: #60a5fa;
+            font-size: 16px;
+            transition: transform 0.3s;
+            display: inline-block;
+        }
+
+        .expand-btn.active {
+            transform: rotate(90deg);
+        }
+
+        /* 隐藏的文件上传input */
+        #csvFileInput {
+            display: none;
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>
+                <span>🤗</span>
+                HuggingFace 模型数据表
+            </h1>
+            <div class="stats">
+                <div class="stat-item">
+                    <span>总模型数:</span>
+                    <span class="stat-value" id="totalCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>有效基础模型:</span>
+                    <span class="stat-value" id="validCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>衍生模型:</span>
+                    <span class="stat-value" id="derivedCount">0</span>
+                </div>
+                <div class="stat-item">
+                    <span>当前显示:</span>
+                    <span class="stat-value" id="showCount">0</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="search-box">
+                <span class="search-icon">🔍</span>
+                <input type="text" id="searchInput" placeholder="搜索模型ID、基础模型、标签...">
+            </div>
+
+            <div class="filter-group">
+                <span class="filter-label">验证状态:</span>
+                <select id="validFilter">
+                    <option value="all">全部</option>
+                    <option value="valid">已验证</option>
+                    <option value="invalid">未验证</option>
+                </select>
+            </div>
+
+            <div class="filter-group">
+                <span class="filter-label">模型类型:</span>
+                <select id="typeFilter">
+                    <option value="all">全部</option>
+                    <option value="base">基础模型</option>
+                    <option value="derived">衍生模型</option>
+                </select>
+            </div>
+
+            <!-- 上传按钮 -->
+            <label class="btn" for="csvFileInput">
+                <span>📤</span> 上传 CSV
+            </label>
+            <input type="file" id="csvFileInput" accept=".csv">
+
+            <button class="btn" id="exportBtn">
+                <span>📥</span> 导出 CSV
+            </button>
+        </div>
+
+        <div class="table-container">
+            <div class="table-wrapper">
+                <table id="dataTable">
+                    <thead>
+                        <tr>
+                            <th style="width: 30px;"></th>
+                            <th data-column="model_id">模型 ID <span class="sort-icon">↕</span></th>
+                            <th data-column="base_model_final">基础模型 <span class="sort-icon">↕</span></th>
+                            <th data-column="is_base_model_valid">验证状态 <span class="sort-icon">↕</span></th>
+                            <th data-column="downloads">下载量 <span class="sort-icon">↕</span></th>
+                            <th data-column="likes">点赞数 <span class="sort-icon">↕</span></th>
+                            <th data-column="pipeline_tag">任务类型</th>
+                            <th data-column="library_name">框架</th>
+                            <th data-column="extract_source">来源</th>
+                        </tr>
+                    </thead>
+                    <tbody id="tableBody">
+                        <!-- 数据将在这里渲染 -->
+                        <tr>
+                            <td colspan="9" class="empty-state">
+                                <div class="empty-icon">📂</div>
+                                <div>请点击上方 "上传 CSV" 按钮加载数据</div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // 数据状态管理
+        let rawData = [];
+        let filteredData = [...rawData];
+        let sortColumn = null;
+        let sortDirection = 'asc';
+
+        // 初始化
+        function init() {
+            updateStats();
+            renderTable();
+            bindEvents();
+        }
+
+        // --- CSV 解析核心逻辑 ---
+        function parseCSV(text) {
+            const lines = [];
+            let currentLine = '';
+            let inQuotes = false;
+
+            // 处理带引号的换行
+            for (let i = 0; i < text.length; i++) {
+                const char = text[i];
+                if (char === '"') {
+                    inQuotes = !inQuotes;
+                }
+                if ((char === '\n' || char === '\r') && !inQuotes) {
+                    if (currentLine.trim()) lines.push(currentLine);
+                    currentLine = '';
+                } else {
+                    currentLine += char;
+                }
+            }
+            if (currentLine.trim()) lines.push(currentLine);
+
+            if (lines.length === 0) return [];
+
+            // 提取表头
+            const headers = parseCSVLine(lines[0]);
+            const data = [];
+
+            // 解析数据行
+            for (let i = 1; i < lines.length; i++) {
+                const values = parseCSVLine(lines[i]);
+                const row = {};
+                headers.forEach((header, index) => {
+                    row[header.trim()] = values[index] || '';
+                });
+                data.push(row);
+            }
+            return data;
+        }
+
+        function parseCSVLine(line) {
+            const result = [];
+            let current = '';
+            let inQuotes = false;
+
+            for (let i = 0; i < line.length; i++) {
+                const char = line[i];
+                const nextChar = line[i + 1];
+
+                if (inQuotes) {
+                    if (char === '"' && nextChar === '"') {
+                        current += '"';
+                        i++;
+                    } else if (char === '"') {
+                        inQuotes = false;
+                    } else {
+                        current += char;
+                    }
+                } else {
+                    if (char === '"') {
+                        inQuotes = true;
+                    } else if (char === ',') {
+                        result.push(current);
+                        current = '';
+                    } else {
+                        current += char;
+                    }
+                }
+            }
+            result.push(current);
+            return result;
+        }
+
+        // --- 数据加载与重置 ---
+        function loadData(newData) {
+            rawData = newData;
+            filteredData = [...rawData];
+            sortColumn = null;
+            sortDirection = 'asc';
+
+            // 重置表头样式
+            document.querySelectorAll('th').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+            });
+
+            updateStats();
+            renderTable();
+        }
+
+        // 更新统计数据
+        function updateStats() {
+            document.getElementById('totalCount').textContent = rawData.length;
+            // 兼容不同的列名写法
+            document.getElementById('validCount').textContent = rawData.filter(d => {
+                const val = d.is_base_model_valid || d.valid || d.is_valid;
+                return val === "True" || val === "true" || val === true || val === "1";
+            }).length;
+
+            document.getElementById('derivedCount').textContent = rawData.filter(d => {
+                const base = d.base_model_final || d.base_model;
+                const id = d.model_id || d.id;
+                return base && base !== "无" && base !== id;
+            }).length;
+
+            document.getElementById('showCount').textContent = filteredData.length;
+        }
+
+        // 渲染表格（全量数据，无分页）
+        function renderTable() {
+            const tbody = document.getElementById('tableBody');
+            const tableData = filteredData;
+
+            if (tableData.length === 0) {
+                tbody.innerHTML = `
+                    <tr>
+                        <td colspan="9" class="empty-state">
+                            <div class="empty-icon">🔍</div>
+                            <div>没有找到匹配的数据</div>
+                        </td>
+                    </tr>
+                `;
+                return;
+            }
+
+            tbody.innerHTML = tableData.map((row, index) => {
+                // 兼容不同的列名写法
+                const modelId = row.model_id || row.id || '—';
+                const baseModel = row.base_model_final || row.base_model || '—';
+                const isValidRaw = row.is_base_model_valid || row.valid;
+                const downloads = row.downloads || '0';
+                const likes = row.likes || '0';
+                const pipeline = row.pipeline_tag || row.task || '—';
+                const library = row.library_name || row.library || '—';
+                const source = row.extract_source || row.source || '—';
+                const tags = row.tags ? row.tags.split(',').slice(0, 5) : [];
+
+                const isValid = isValidRaw === "True" || isValidRaw === "true" || isValidRaw === true;
+                const isBaseModel = !baseModel || baseModel === "无" || baseModel === modelId;
+
+                return `
+                    <tr data-index="${index}">
+                        <td>
+                            <span class="expand-btn" onclick="toggleDetail(${index})">▶</span>
+                        </td>
+                        <td class="cell-model-id">${escapeHtml(modelId)}</td>
+                        <td class="cell-base-model ${isBaseModel ? 'empty' : ''}">
+                            ${baseModel && baseModel !== "无" ? escapeHtml(baseModel) : '—'}
+                        </td>
+                        <td>
+                            <span class="cell-valid ${isValid ? 'valid' : 'invalid'}">
+                                ${isValid ? '✓' : '✗'} ${isValid ? '已验证' : '未验证'}
+                            </span>
+                        </td>
+                        <td class="cell-number">${formatNumber(downloads)}</td>
+                        <td class="cell-number">${formatNumber(likes)}</td>
+                        <td class="cell-pipeline">${escapeHtml(pipeline)}</td>
+                        <td class="cell-library">${escapeHtml(library)}</td>
+                        <td class="cell-source">${escapeHtml(source)}</td>
+                    </tr>
+                    <tr class="detail-row" id="detail-${index}">
+                        <td colspan="9">
+                            <div class="detail-content">
+                                <div class="detail-grid">
+                                    <div class="detail-item">
+                                        <div class="detail-label">完整模型ID</div>
+                                        <div class="detail-value">${escapeHtml(modelId)}</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">基础模型</div>
+                                        <div class="detail-value">${escapeHtml(baseModel)}</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">验证状态</div>
+                                        <div class="detail-value">${isValid ? '已验证' : '未验证'}</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">下载量</div>
+                                        <div class="detail-value">${formatNumber(downloads)}</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">点赞数</div>
+                                        <div class="detail-value">${formatNumber(likes)}</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">任务类型</div>
+                                        <div class="detail-value">${escapeHtml(pipeline)}</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">框架</div>
+                                        <div class="detail-value">${escapeHtml(library)}</div>
+                                    </div>
+                                    <div class="detail-item">
+                                        <div class="detail-label">数据来源</div>
+                                        <div class="detail-value">${escapeHtml(source)}</div>
+                                    </div>
+                                    <div class="detail-item" style="grid-column: 1 / -1;">
+                                        <div class="detail-label">标签</div>
+                                        <div class="cell-tags" style="max-width: 100%;">
+                                            ${row.tags ? row.tags.split(',').map(t => `<span class="tag">${escapeHtml(t.trim())}</span>`).join('') : '—'}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        // 展开/收起详情
+        window.toggleDetail = function (index) {
+            const detailRow = document.getElementById(`detail-${index}`);
+            const btn = document.querySelector(`tr[data-index="${index}"] .expand-btn`);
+
+            if (detailRow.classList.contains('active')) {
+                detailRow.classList.remove('active');
+                btn.classList.remove('active');
+            } else {
+                // 关闭其他已展开的行
+                document.querySelectorAll('.detail-row.active').forEach(row => {
+                    row.classList.remove('active');
+                });
+                document.querySelectorAll('.expand-btn.active').forEach(b => {
+                    b.classList.remove('active');
+                });
+
+                detailRow.classList.add('active');
+                btn.classList.add('active');
+            }
+        };
+
+        // 排序功能
+        function sortData(column) {
+            if (sortColumn === column) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = column;
+                sortDirection = 'asc';
+            }
+
+            // 更新表头排序样式
+            document.querySelectorAll('th').forEach(th => {
+                th.classList.remove('sort-asc', 'sort-desc');
+            });
+            const th = document.querySelector(`th[data-column="${column}"]`);
+            if (th) {
+                th.classList.add(sortDirection === 'asc' ? 'sort-asc' : 'sort-desc');
+            }
+
+            // 排序逻辑
+            filteredData.sort((a, b) => {
+                let aVal = a[column];
+                let bVal = b[column];
+
+                // 数字字段特殊处理
+                if (['downloads', 'likes'].includes(column)) {
+                    aVal = parseInt(aVal) || 0;
+                    bVal = parseInt(bVal) || 0;
+                } else {
+                    aVal = (aVal || '').toString().toLowerCase();
+                    bVal = (bVal || '').toString().toLowerCase();
+                }
+
+                if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            renderTable();
+        }
+
+        // 筛选功能
+        function filterData() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const validFilter = document.getElementById('validFilter').value;
+            const typeFilter = document.getElementById('typeFilter').value;
+
+            filteredData = rawData.filter(row => {
+                // 关键词搜索 (兼容字段名)
+                if (searchTerm) {
+                    const modelId = row.model_id || '';
+                    const baseModel = row.base_model_final || row.base_model || '';
+                    const tags = row.tags || '';
+                    const pipeline = row.pipeline_tag || '';
+
+                    const searchFields = [modelId, baseModel, tags, pipeline].join(' ').toLowerCase();
+                    if (!searchFields.includes(searchTerm)) return false;
+                }
+
+                // 验证状态筛选
+                if (validFilter !== 'all') {
+                    const isValidRaw = row.is_base_model_valid || row.valid;
+                    const isValid = isValidRaw === "True" || isValidRaw === "true" || isValidRaw === true;
+                    if (validFilter === 'valid' && !isValid) return false;
+                    if (validFilter === 'invalid' && isValid) return false;
+                }
+
+                // 模型类型筛选
+                if (typeFilter !== 'all') {
+                    const baseModel = row.base_model_final || row.base_model || '';
+                    const modelId = row.model_id || '';
+                    const isBase = !baseModel || baseModel === "无" || baseModel === modelId;
+                    if (typeFilter === 'base' && !isBase) return false;
+                    if (typeFilter === 'derived' && isBase) return false;
+                }
+
+                return true;
+            });
+
+            updateStats();
+            renderTable();
+        }
+
+        // 工具函数
+        function formatNumber(num) {
+            if (!num) return '0';
+            const n = parseInt(num);
+            if (isNaN(n)) return num;
+            if (n >= 100000000) return (n / 100000000).toFixed(1) + '亿';
+            if (n >= 10000) return (n / 10000).toFixed(1) + '万';
+            if (n >= 1000) return (n / 1000).toFixed(1) + 'K';
+            return n.toLocaleString();
+        }
+
+        function escapeHtml(text) {
+            if (!text) return '';
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        // 导出CSV
+        function exportCSV() {
+            if (filteredData.length === 0) {
+                alert('没有数据可导出');
+                return;
+            }
+
+            // 收集所有出现过的表头
+            const headers = new Set();
+            filteredData.forEach(row => Object.keys(row).forEach(k => headers.add(k)));
+            const headerArray = Array.from(headers);
+
+            const csvContent = [
+                headerArray.join(','),
+                ...filteredData.map(row => headerArray.map(h => {
+                    let val = row[h] || '';
+                    // 处理CSV转义
+                    if (typeof val === 'string' && (val.includes(',') || val.includes('"') || val.includes('\n'))) {
+                        val = '"' + val.replace(/"/g, '""') + '"';
+                    }
+                    return val;
+                }).join(','))
+            ].join('\n');
+
+            const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `hf_models_${new Date().toISOString().slice(0, 10)}.csv`;
+            link.click();
+        }
+
+        // 绑定事件
+        function bindEvents() {
+            // 文件上传事件
+            document.getElementById('csvFileInput').addEventListener('change', function (e) {
+                const file = e.target.files[0];
+                if (!file) return;
+
+                const reader = new FileReader();
+                reader.onload = function (e) {
+                    const text = e.target.result;
+                    try {
+                        const data = parseCSV(text);
+                        if (data.length === 0) {
+                            alert('CSV文件为空或格式无法识别');
+                            return;
+                        }
+                        loadData(data);
+                    } catch (err) {
+                        console.error(err);
+                        alert('解析CSV文件时出错');
+                    }
+                };
+                reader.readAsText(file);
+                // 清空input，允许重复上传同一个文件
+                this.value = '';
+            });
+
+            // 搜索输入防抖
+            document.getElementById('searchInput').addEventListener('input', debounce(filterData, 300));
+
+            // 筛选器变更
+            document.getElementById('validFilter').addEventListener('change', filterData);
+            document.getElementById('typeFilter').addEventListener('change', filterData);
+
+            // 表头排序点击
+            document.querySelectorAll('th[data-column]').forEach(th => {
+                th.addEventListener('click', () => sortData(th.dataset.column));
+            });
+
+            // 导出按钮
+            document.getElementById('exportBtn').addEventListener('click', exportCSV);
+        }
+
+        // 防抖函数
+        function debounce(func, wait) {
+            let timeout;
+            return function executedFunction(...args) {
+                const later = () => {
+                    clearTimeout(timeout);
+                    func(...args);
+                };
+                clearTimeout(timeout);
+                timeout = setTimeout(later, wait);
+            };
+        }
+
+        // 启动页面
+        init();
+    </script>
+</body>
+
+</html>
