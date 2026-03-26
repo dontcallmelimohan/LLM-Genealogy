@@ -10,11 +10,11 @@ from urllib3.util.retry import Retry
 # ======================================
 # ⚙️ 全局配置（按需修改）
 # ======================================
-LIMIT = 50  # 抓取模型数量
+LIMIT = 5  # 抓取模型数量
 SORT_BY = "downloads"  # 排序规则: downloads/likes/last_modified
 RETRY_TIMES = 3  # 网络请求重试次数
 TIMEOUT = 10  # 单次请求超时时间(秒)
-SLEEP_TIME = 0.15  # 每次请求间隔(防限流)
+SLEEP_TIME = 0.01  # 每次请求间隔(防限流)
 VERIFY_BASE_MODEL = True  # 是否校验父模型ID真实有效
 OUTPUT_DIR = "data"  # 输出目录
 
