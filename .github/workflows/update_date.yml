@@ -3,22 +3,20 @@ name: 每月自动更新模型数据
 on:
   schedule:
     - cron: '0 0 1 * *'  # UTC每月1号0点（对应北京时间每月1号8点）
-    # 如需北京时间每月1号0点执行，替换为下行（注意2月等小月兼容）
-    # - cron: '0 16 30 * *'
   workflow_dispatch:     # 保留手动触发能力
 
 jobs:
   run-update:
     runs-on: ubuntu-latest
-    # 核心修复：给内置GITHUB_TOKEN仓库写入权限，解决git push权限拒绝问题
+    # 修复1：开放仓库写入权限，解决后续git push权限拒绝问题
     permissions:
       contents: write
     steps:
       - name: 检出仓库代码
         uses: actions/checkout@v4
         with:
-          ref: main  # 请替换为你的仓库默认分支名（main/master）
-          fetch-depth: 0  # 拉取完整仓库历史，避免提交冲突
+          ref: main  # 若仓库默认分支为master，请替换为master
+          fetch-depth: 0
 
       - name: 设置 Python 环境
         uses: actions/setup-python@v5
@@ -26,20 +24,20 @@ jobs:
           python-version: '3.11'
           cache: 'pip'  # 开启pip缓存，大幅提速后续运行
 
-      - name: 安装项目全量依赖
+      - name: 安装全量依赖
+        # 修复2：补全脚本所需的所有依赖，彻底解决模块找不到的核心报错
         run: |
           python -m pip install --upgrade pip
-          # 补全脚本所需的所有依赖（crawl.py用到了requests/urllib3）
           pip install pandas aiohttp huggingface-hub requests urllib3
 
       - name: 执行数据抓取与过滤脚本
-        # 注入HF_TOKEN（如果脚本需要Hugging Face认证），同时开启错误终止
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          set -e  # 脚本执行出错立即终止，不继续无效提交
+          set -e  # 脚本执行出错立即终止，不提交错误/空数据
           python crawl.py
           python filter_from_csv.py
+        # 若Hugging Face API需要认证，取消下方注释，并在仓库Secrets中添加HF_TOKEN
+        # env:
+        #   HF_TOKEN: ${{ secrets.HF_TOKEN }}
 
       - name: 提交并推送更新到仓库
         run: |
