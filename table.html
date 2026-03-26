@@ -416,11 +416,16 @@
             transform: rotate(90deg);
         }
 
-        /* 隐藏的文件上传input */
-        #csvFileInput {
-            display: none;
+        /* 加载状态提示 */
+        .loading-status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #60a5fa;
+            font-size: 13px;
         }
     </style>
+    <base target="_blank">
 </head>
 
 <body>
@@ -474,11 +479,9 @@
                 </select>
             </div>
 
-            <!-- 上传按钮 -->
-            <label class="btn" for="csvFileInput">
-                <span>📤</span> 上传 CSV
-            </label>
-            <input type="file" id="csvFileInput" accept=".csv">
+            <button class="btn" id="refreshBtn">
+                <span>🔄</span> 刷新数据
+            </button>
 
             <button class="btn" id="exportBtn">
                 <span>📥</span> 导出 CSV
@@ -505,8 +508,10 @@
                         <!-- 数据将在这里渲染 -->
                         <tr>
                             <td colspan="9" class="empty-state">
-                                <div class="empty-icon">📂</div>
-                                <div>请点击上方 "上传 CSV" 按钮加载数据</div>
+                                <div class="loading">
+                                    <div class="spinner"></div>
+                                    <div>正在加载 hf_models_has_base.csv...</div>
+                                </div>
                             </td>
                         </tr>
                     </tbody>
@@ -522,11 +527,62 @@
         let sortColumn = null;
         let sortDirection = 'asc';
 
+        // 固定的CSV文件路径
+        const CSV_FILE_PATH = 'hf_models_has_base.csv';
+
         // 初始化
-        function init() {
-            updateStats();
-            renderTable();
+        async function init() {
             bindEvents();
+            await loadCSVData();
+        }
+
+        // 加载CSV数据
+        async function loadCSVData() {
+            showLoading();
+            try {
+                const response = await fetch(CSV_FILE_PATH);
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+                const text = await response.text();
+                const data = parseCSV(text);
+                if (data.length === 0) {
+                    showError('CSV文件为空或格式无法识别');
+                    return;
+                }
+                loadData(data);
+            } catch (error) {
+                console.error('加载CSV文件失败:', error);
+                showError(`加载CSV文件失败: ${error.message}<br><br>请确保文件 "${CSV_FILE_PATH}" 存在于当前目录下。`);
+            }
+        }
+
+        // 显示加载状态
+        function showLoading() {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="empty-state">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            <div>正在加载 ${CSV_FILE_PATH}...</div>
+                        </div>
+                    </td>
+                </tr>
+            `;
+        }
+
+        // 显示错误信息
+        function showError(message) {
+            const tbody = document.getElementById('tableBody');
+            tbody.innerHTML = `
+                <tr>
+                    <td colspan="9" class="empty-state">
+                        <div class="empty-icon">⚠️</div>
+                        <div>${message}</div>
+                    </td>
+                </tr>
+            `;
         }
 
         // --- CSV 解析核心逻辑 ---
@@ -892,31 +948,6 @@
 
         // 绑定事件
         function bindEvents() {
-            // 文件上传事件
-            document.getElementById('csvFileInput').addEventListener('change', function (e) {
-                const file = e.target.files[0];
-                if (!file) return;
-
-                const reader = new FileReader();
-                reader.onload = function (e) {
-                    const text = e.target.result;
-                    try {
-                        const data = parseCSV(text);
-                        if (data.length === 0) {
-                            alert('CSV文件为空或格式无法识别');
-                            return;
-                        }
-                        loadData(data);
-                    } catch (err) {
-                        console.error(err);
-                        alert('解析CSV文件时出错');
-                    }
-                };
-                reader.readAsText(file);
-                // 清空input，允许重复上传同一个文件
-                this.value = '';
-            });
-
             // 搜索输入防抖
             document.getElementById('searchInput').addEventListener('input', debounce(filterData, 300));
 
@@ -931,6 +962,9 @@
 
             // 导出按钮
             document.getElementById('exportBtn').addEventListener('click', exportCSV);
+
+            // 刷新按钮
+            document.getElementById('refreshBtn').addEventListener('click', loadCSVData);
         }
 
         // 防抖函数

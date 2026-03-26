@@ -14,6 +14,54 @@
             box-sizing: border-box;
         }
 
+
+
+        /* 美化滚动条 - WebKit内核（Chrome/Edge/360等） */
+        ::-webkit-scrollbar {
+            width: 6px;
+            /* 垂直滚动条宽度 */
+            height: 6px;
+            /* 水平滚动条高度 */
+        }
+
+        /* 滚动条轨道 */
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            /* 浅灰轨道，可改#eee/#f5f5f5等 */
+            border-radius: 3px;
+            /* 圆角更柔和 */
+        }
+
+        /* 滚动条滑块 */
+        ::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            /* 滑块基础色 */
+            border-radius: 3px;
+            transition: background 0.2s ease;
+            /* hover渐变过渡 */
+        }
+
+        /* 滑块hover/点击状态 */
+        ::-webkit-scrollbar-thumb:hover {
+            background: #999;
+            /* hover加深 */
+        }
+
+        ::-webkit-scrollbar-thumb:active {
+            background: #666;
+            /* 点击再加深 */
+        }
+
+        /* 适配Firefox浏览器 */
+        * {
+            scrollbar-width: thin;
+            /* 滚动条设为细款 */
+            scrollbar-color: #c1c1c1 #f1f1f1;
+            /* 滑块色 轨道色，与上方webkit对应 */
+        }
+
+
+
         body {
             font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
             background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
@@ -211,6 +259,72 @@
         .btn.active {
             background: #60a5fa;
             color: #0f172a;
+        }
+
+        /* 松紧度滑块控制 */
+        .slider-control {
+            margin-bottom: 16px;
+            padding: 12px;
+            background: rgba(30, 41, 59, 0.6);
+            border-radius: 8px;
+        }
+
+        .slider-label {
+            font-size: 12px;
+            color: #64748b;
+            margin-bottom: 8px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .slider-value {
+            color: #60a5fa;
+            font-weight: 600;
+        }
+
+        .slider-container {
+            position: relative;
+            width: 100%;
+            height: 24px;
+            display: flex;
+            align-items: center;
+        }
+
+        input[type="range"] {
+            width: 100%;
+            height: 4px;
+            background: rgba(148, 163, 184, 0.2);
+            border-radius: 2px;
+            outline: none;
+            /* -webkit-appearance: none; */
+            cursor: pointer;
+        }
+
+        input[type="range"]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: #60a5fa;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: all 0.3s;
+            box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover {
+            transform: scale(1.2);
+            box-shadow: 0 0 0 4px rgba(96, 165, 250, 0.3);
+        }
+
+        input[type="range"]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: #60a5fa;
+            border-radius: 50%;
+            cursor: pointer;
+            border: none;
+            box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
         }
 
         /* 筛选器 */
@@ -755,6 +869,7 @@
             }
         }
     </style>
+    <base target="_blank">
 </head>
 
 <body>
@@ -814,6 +929,28 @@
                     </div>
                 </div>
 
+                <!-- 松紧度控制滑块 -->
+                <div class="slider-control" id="distanceControl" style="display: none;">
+                    <div class="slider-label">
+                        <span>🔘 节点间距 (松紧度)</span>
+                        <span class="slider-value" id="distanceValue">120</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="distanceSlider" min="50" max="300" value="120" step="10">
+                    </div>
+                </div>
+
+                <!-- 排斥力控制滑块 -->
+                <div class="slider-control" id="chargeControl" style="display: none;">
+                    <div class="slider-label">
+                        <span>⚡ 节点排斥力</span>
+                        <span class="slider-value" id="chargeValue">400</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="chargeSlider" min="100" max="1000" value="400" step="50">
+                    </div>
+                </div>
+
                 <div class="controls" id="controlsContainer" style="display: none;">
                     <button class="btn active" id="physicsBtn">
                         <span>⚡</span> 物理模拟
@@ -822,7 +959,7 @@
                         <span>🌳</span> 树形布局
                     </button>
                     <button class="btn" id="resetBtn">
-                        <span>⟲</span> 重置
+                        <span>⟲</span> 重置视图
                     </button>
                 </div>
 
@@ -903,6 +1040,8 @@
         let activeFilters = {
             types: new Set(['root', 'finetuned', 'merged'])
         };
+        let currentDistance = 120;  // 当前节点间距
+        let currentCharge = 400;    // 当前排斥力
 
         // 颜色配置
         const colors = {
@@ -1151,6 +1290,9 @@
 
             svg.call(zoom);
 
+            // 保存zoom行为引用，用于重置
+            svg.__zoom = zoom;
+
             render();
         }
 
@@ -1172,8 +1314,8 @@
             if (filteredNodes.length === 0) return;
 
             simulation = d3.forceSimulation(filteredNodes)
-                .force("link", d3.forceLink(filteredLinks).id(d => d.id).distance(120))
-                .force("charge", d3.forceManyBody().strength(-400))
+                .force("link", d3.forceLink(filteredLinks).id(d => d.id).distance(currentDistance))
+                .force("charge", d3.forceManyBody().strength(-currentCharge))
                 .force("center", d3.forceCenter(width / 2, height / 2))
                 .force("collision", d3.forceCollide().radius(d => d.size + 10))
                 .force("x", d3.forceX(width / 2).strength(0.05))
@@ -1478,10 +1620,21 @@
         function updateUI() {
             document.getElementById('searchContainer').style.display = 'block';
             document.getElementById('statsContainer').style.display = 'grid';
+            document.getElementById('distanceControl').style.display = 'block';
+            document.getElementById('chargeControl').style.display = 'block';
             document.getElementById('controlsContainer').style.display = 'flex';
             document.getElementById('filtersContainer').style.display = 'block';
             document.getElementById('zoomControls').style.display = 'flex';
             document.getElementById('legendContainer').style.display = 'block';
+        }
+
+        // 更新物理模拟参数
+        function updateSimulation() {
+            if (!simulation) return;
+
+            simulation.force("link").distance(currentDistance);
+            simulation.force("charge").strength(-currentCharge);
+            simulation.alpha(0.3).restart();
         }
 
         // 绑定事件
@@ -1509,19 +1662,43 @@
                 }
             });
 
-            // 重置
+            // 重置视图按钮 - 修复版
             document.getElementById('resetBtn').addEventListener('click', () => {
+                // 重置缩放和位置
                 svg.transition().duration(750).call(
-                    d3.zoom().transform,
+                    svg.__zoom.transform,
                     d3.zoomIdentity
                 );
-                node.classed('highlighted dimmed', false);
-                link.classed('highlighted dimmed', false)
-                    .attr('marker-end', 'url(#arrowhead)');
-                g.selectAll('.flow-line').classed('flowing', false);
+
+                // 清除节点高亮和变暗
+                if (node) {
+                    node.classed('highlighted', false)
+                        .classed('dimmed', false);
+                }
+
+                // 清除连线高亮和变暗
+                if (link) {
+                    link.classed('highlighted', false)
+                        .classed('dimmed', false)
+                        .attr('marker-end', 'url(#arrowhead)');
+                }
+
+                // 停止流动动画
+                if (g) {
+                    g.selectAll('.flow-line').classed('flowing', false);
+                }
+
+                // 关闭信息面板
                 document.getElementById('infoPanel').classList.add('collapsed');
                 document.getElementById('infoToggle').textContent = '+';
+
+                // 清空选中状态
                 selectedNode = null;
+
+                // 重置搜索框
+                document.getElementById('searchInput').value = '';
+
+                console.log('视图已重置');
             });
 
             // 物理模拟开关
@@ -1566,6 +1743,20 @@
                 });
             });
 
+            // 节点间距滑块
+            document.getElementById('distanceSlider').addEventListener('input', function () {
+                currentDistance = parseInt(this.value);
+                document.getElementById('distanceValue').textContent = currentDistance;
+                updateSimulation();
+            });
+
+            // 排斥力滑块
+            document.getElementById('chargeSlider').addEventListener('input', function () {
+                currentCharge = parseInt(this.value);
+                document.getElementById('chargeValue').textContent = currentCharge;
+                updateSimulation();
+            });
+
             // 窗口调整
             window.addEventListener('resize', () => {
                 width = window.innerWidth;
@@ -1589,7 +1780,7 @@
             const minRatio = Math.min(widthRatio, heightRatio) * 0.85;
 
             svg.transition().duration(750).call(
-                d3.zoom().transform,
+                svg.__zoom.transform,
                 d3.zoomIdentity
                     .translate(fullWidth / 2, fullHeight / 2)
                     .scale(Math.max(0.1, Math.min(minRatio, 1.5)))
