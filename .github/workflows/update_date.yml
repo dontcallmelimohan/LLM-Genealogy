@@ -41,7 +41,7 @@ jobs:
         run: |
           git config --global user.name "Auto Update"
           git config --global user.email "auto@github.com"
-          git pull origin main
           git add hf_models_has_base.csv
-          git diff --staged --quiet || git commit -m "Auto update model data $(date +'%Y-%m-%d')"
-          git push
+          git diff --staged --quiet && exit 0
+          git commit -m "Auto update model data $(date +'%Y-%m-%d')"
+          git push origin HEAD:main
