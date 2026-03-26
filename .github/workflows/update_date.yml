@@ -3,51 +3,45 @@ name: 每月自动更新模型数据
 on:
   schedule:
     - cron: '0 0 1 * *'  # UTC每月1号0点（对应北京时间每月1号8点）
-    # 如需北京时间每月1号0点执行，替换为下行（注意2月等小月兼容）
-    # - cron: '0 16 30 * *'
   workflow_dispatch:     # 保留手动触发能力
 
 jobs:
   run-update:
     runs-on: ubuntu-latest
-    # 核心修复：给内置GITHUB_TOKEN仓库写入权限，解决git push权限拒绝问题
     permissions:
       contents: write
     steps:
       - name: 检出仓库代码
         uses: actions/checkout@v4
         with:
-          ref: main  # 请替换为你的仓库默认分支名（main/master）
-          fetch-depth: 0  # 拉取完整仓库历史，避免提交冲突
+          ref: main  # 若仓库默认分支为master，替换为master
+          fetch-depth: 0
 
       - name: 设置 Python 环境
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-          cache: 'pip'  # 开启pip缓存，大幅提速后续运行
+          cache: 'pip'  # 已有requirements.txt，缓存功能可正常使用
 
-      - name: 安装项目全量依赖
+      - name: 安装全量依赖
+        # 直接从requirements.txt安装，统一管理依赖
         run: |
           python -m pip install --upgrade pip
-          # 补全脚本所需的所有依赖（crawl.py用到了requests/urllib3）
-          pip install pandas aiohttp huggingface-hub requests urllib3
+          pip install -r requirements.txt
 
       - name: 执行数据抓取与过滤脚本
-        # 注入HF_TOKEN（如果脚本需要Hugging Face认证），同时开启错误终止
-        env:
-          HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          set -e  # 脚本执行出错立即终止，不继续无效提交
+          set -e
           python crawl.py
           python filter_from_csv.py
+        # env:
+        #   HF_TOKEN: ${{ secrets.HF_TOKEN }}
 
       - name: 提交并推送更新到仓库
         run: |
           git config --global user.name "Auto Update"
           git config --global user.email "auto@github.com"
-          # 先拉取远程最新代码，避免并发更新导致push冲突
-          git pull origin main  # 分支名与上方checkout保持一致
+          git pull origin main
           git add hf_models_has_base.csv
-          # 兼容无变更场景：文件无改动则跳过commit，避免workflow异常终止
           git diff --staged --quiet || git commit -m "Auto update model data $(date +'%Y-%m-%d')"
           git push
